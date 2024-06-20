@@ -14,38 +14,49 @@ export default function Home() {
     "#EFBE7D",
     "#B1A2CA"
   ]
-    useEffect(() => {
-        const requestData = {
-            "nodes": ["User"],
-            "relationships":["CONNECTED_TO"],
-            "export_format": "d3"
+  
+  useEffect(() => {
+    const requestData = {
+      "nodes": ["User"],
+      "relationships": ["CONNECTED_TO"],
+      "export_format": "d3"
+    }
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch('https://neo4j-python-server-1.onrender.com/relationships', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData),
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const newData = await response.json();
+
+        // Add nodes and links one by one with a delay
+        for (const newNode of newData.nodes) {
+          if (!data.nodes.some(node => node.id === newNode.id)) {
+            setData(prevData => ({ ...prevData, nodes: [...prevData.nodes, newNode] }));
+            await new Promise(resolve => setTimeout(resolve, 500)); // Delay of 500ms
+          }
         }
-        const fetchData = async () => {
-            try {
-                const response = await fetch('https://neo4j-python-server-1.onrender.com/relationships', {
-                    method: 'POST', // Use the POST method to send data
-                    headers: {
-                        'Content-Type': 'application/json', // Set the content type header
-                    },
-                    body: JSON.stringify(requestData), // Convert the JSON data to a string
-                });
-                if (!response.ok) throw new Error('Network response was not ok');
-                const newData = await response.json();
-                setData(({ nodes, links }) => {
-                    // Merge new nodes and links with existing ones
-                    const updatedNodes = [...nodes, ...newData.nodes.filter(newNode => !nodes.some(node => node.id === newNode.id))];
-                    const updatedLinks = [...links, ...newData.links.filter(newLink => !links.some(link => link.source === newLink.source && link.target === newLink.target))];
-                    return { nodes: updatedNodes, links: updatedLinks };
-                });
-            } catch (error) {
-                console.error('Fetching data failed:', error);
-            }
-        };
 
-        const intervalId = setInterval(fetchData, 5000);
-        return () => clearInterval(intervalId);
-    }, []);
+        for (const newLink of newData.links) {
+          if (!data.links.some(link => link.source === newLink.source && link.target === newLink.target)) {
+            setData(prevData => ({ ...prevData, links: [...prevData.links, newLink] }));
+            await new Promise(resolve => setTimeout(resolve, 500)); // Delay of 500ms
+          }
+        }
+      } catch (error) {
+        console.error('Fetching data failed:', error);
+      }
+    };
 
+    fetchData();
+  }, []);
 
     return (
 
